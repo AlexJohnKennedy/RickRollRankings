@@ -8,57 +8,33 @@ import praw
 import prawcore
 
 # kafka-python is a simple library that allows us to behave as a kafka producer.
+from kafka import KafkaProducer
+from kafka.errors import KafkaError
 
-
+# Misc other imports
+from Helpers import isRickRoll, isRedirectLink
 import datetime
 import os
 
-
-
-# Test app client id, client secret, and pass word, etc.
+# Reddit API Keys and details, loaded from the environment
 CLIENTID = os.environ.get("CLIENT_ID")
 CLIENTSECRET = os.environ.get("CLIENT_SECRET")
 USERAGENT = "RickRollRankings:v0.1 (by u/AlexKfridges)"
 
-# List of url-snippets that are known rick-roll videos
-rickRollTextSnippets = [
-    # Youtube videos
-    "oHg5SJYRHA0",
-    "dQw4w9WgXcQ",
-    "xfr64zoBTAQ",
-    "dPmZqsQNzGA",
-    "r8tXjJL3xcM",
-    "6-HUgzYPm9g",
+# Kafka bootstrap server address and topic-names to enqueue, loaded from the environment
+KAFKA_BOOTSTRAP_SERV = os.environ.get("KAFKA_BOOTSTRAP_SERV")
+RICKROLL_TOPIC = os.environ.get("KAFKA_NEW_RICKROLL_TOPIC_NAME")
+REDIRECT_TOPIC = os.environ.get("KAFKA_CHECK_REDIRECT_TOPIC_NAME")
+NUM_PRODUCER_RETIRES = os.environ.get("KAFKA_PRODUCER_NUM_RETRIES")
 
-    # Fake news websites which contains an embedded Rick-roll on the site
-    "latlmes.com/breaking",
-    "rickrolled.com"
-]
-
-# List of common link-shortening services which should be checked for rick-roll-redirects
-redirectCandidateSnippets = [
-    "tinyurl.com/",
-    "bit.ly/",
-    "bitly.com/",
-    "alturl.com/",
-    "goo.gl/",
-    "rb.gy/",
-    "bit.do/",
-    "is.gd/",
-    "ow.ly/"
-]
+# Instantiate a Kafka producer object, which connects to our cluster using the bootstrap server address.
+producer = KafkaProducer(bootstrap_servers=[KAFKA_BOOTSTRAP_SERV], retries=NUM_PRODUCER_RETIRES)
 
 # Instantiate a 'Reddit' object, which acts as a logged-in conduit to reddit :)
 redditApi = praw.Reddit(client_id = CLIENTID, client_secret = CLIENTSECRET, user_agent = USERAGENT)
 
 print("Logged in as:")
 print(redditApi.user.me())
-
-def isRickRoll(text):
-    if "oHg5SJYRHA0".lower() in text.lower() or "dQw4w9WgXcQ".lower() in text.lower():
-        return True
-    else:
-        return False
 
 counter = 0
 totalCounter = 0
