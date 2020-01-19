@@ -1,0 +1,5 @@
+# Ignore .vscode settings
+/.vscode
+
+# Ignore datalog files for the RickRollCrawler, but ensure that the file itself is still there
+/RickRollCrawler/datalogs/*
