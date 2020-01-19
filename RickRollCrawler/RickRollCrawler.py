@@ -11,10 +11,12 @@ import praw
 import prawcore     # for praw-exception classes
 import datetime
 
+import os
+
 # Test app client id, client secret, and pass word, etc.
-CLIENTID = ""
-CLIENTSECRET = ""
-USERAGENT = ""
+CLIENTID = os.environ.get("CLIENT_ID")
+CLIENTSECRET = os.environ.get("CLIENT_SECRET")
+USERAGENT = "RickRollRankings:v0.1 (by u/AlexKfridges)"
 
 # List of url-snippets that are known rick-roll videos
 rickRollTextSnippets = [

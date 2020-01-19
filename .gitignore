@@ -1,3 +1,6 @@
+# IMPORTANT: Ignore all ".env" files. I'm being lazy and dumping shit into these .env files that shouldn't be pushed to github
+*.env
+
 # Ignore .vscode settings
 /.vscode
 
