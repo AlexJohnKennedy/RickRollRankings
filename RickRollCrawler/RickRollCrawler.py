@@ -13,6 +13,7 @@ from kafka.errors import KafkaError
 
 # Misc other imports
 from CommentAnalysisHelpers import isRickRoll, isRedirectLink
+from MessageSerialisationHelpers import newRickRollSerialiser, redirectLinkSerialiser
 import datetime
 import os
 
@@ -46,10 +47,21 @@ try:
         try:
             for comment in redditApi.subreddit('all').stream.comments():
                 if (isRickRoll(comment)):
-                    counter = counter + 1
+                    # Publish a new 'New Rick-roll comment' event!
                     print("Found rick roll")
+                    producer.send(
+                        topic = RICKROLL_TOPIC,
+                        value = newRickRollSerialiser(comment),
+                        key = comment.author.id
+                    )
                 if (isRedirectLink(comment)):
+                    # Publish a new 'redirect links to check' event!
                     print("Found redirect link candidate")
+                    producer.send(
+                        topic = REDIRECT_TOPIC,
+                        value = redirectLinkSerialiser(comment),
+                        key = comment.author.id
+                    )
         except praw.exceptions.APIException:
             print(" error!\nRate limited on comment", comment.id, "by", comment.author)
         except prawcore.exceptions.Forbidden:
