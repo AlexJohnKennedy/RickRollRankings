@@ -3,15 +3,17 @@
 # rick-roll links. If we find any, we will publish the comment as a 'new rick roll' event into Kafka for
 # processing by our system.
 
-# DEVELOPMENT PHASE 1: Read-only bot using PRAW (Python module to wrap reddit's API), which just prints comments to the
-# command line and terminates after printing 100 comments. This is a proof-of-concept crawling mechanism.
-
 # praw is the python module that makes it easy to interface with the reddit api.
 import praw
-import prawcore     # for praw-exception classes
-import datetime
+import prawcore
 
+# kafka-python is a simple library that allows us to behave as a kafka producer.
+
+
+import datetime
 import os
+
+
 
 # Test app client id, client secret, and pass word, etc.
 CLIENTID = os.environ.get("CLIENT_ID")
