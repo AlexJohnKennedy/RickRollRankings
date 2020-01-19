@@ -9,4 +9,4 @@ cd $scriptDir
 # Do some stupid shit where you parse variables inside an .env file with cat, and dump them into an 'env'
 # command which runs the .py file, providing the environment vars I need. This is all very hacky and terrible
 # but I'm just playing around atm anyway.
-env $(cat ./redditApiKeys.env | tr "\\n" " ") python3 ./RickRollCrawler.py
+env $(cat ./crawlerVars.env | tr "\\n" " ") python3 ./RickRollCrawler.py

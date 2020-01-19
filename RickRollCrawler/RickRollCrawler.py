@@ -12,7 +12,7 @@ from kafka import KafkaProducer
 from kafka.errors import KafkaError
 
 # Misc other imports
-from Helpers import isRickRoll, isRedirectLink
+from CommentAnalysisHelpers import isRickRoll, isRedirectLink
 import datetime
 import os
 
@@ -25,10 +25,15 @@ USERAGENT = "RickRollRankings:v0.1 (by u/AlexKfridges)"
 KAFKA_BOOTSTRAP_SERV = os.environ.get("KAFKA_BOOTSTRAP_SERV")
 RICKROLL_TOPIC = os.environ.get("KAFKA_NEW_RICKROLL_TOPIC_NAME")
 REDIRECT_TOPIC = os.environ.get("KAFKA_CHECK_REDIRECT_TOPIC_NAME")
-NUM_PRODUCER_RETIRES = os.environ.get("KAFKA_PRODUCER_NUM_RETRIES")
 
 # Instantiate a Kafka producer object, which connects to our cluster using the bootstrap server address.
-producer = KafkaProducer(bootstrap_servers=[KAFKA_BOOTSTRAP_SERV], retries=NUM_PRODUCER_RETIRES)
+producer = KafkaProducer(
+    client_id = "PrawCrawler",
+    bootstrap_servers = [KAFKA_BOOTSTRAP_SERV], 
+    key_serializer = lambda s : s.encode(encoding='UTF-8',errors='strict'),
+    value_serializer = lambda s : s.encode(encoding='UTF-8',errors='strict'),
+    acks = 1
+)
 
 # Instantiate a 'Reddit' object, which acts as a logged-in conduit to reddit :)
 redditApi = praw.Reddit(client_id = CLIENTID, client_secret = CLIENTSECRET, user_agent = USERAGENT)
@@ -36,29 +41,23 @@ redditApi = praw.Reddit(client_id = CLIENTID, client_secret = CLIENTSECRET, user
 print("Logged in as:")
 print(redditApi.user.me())
 
-counter = 0
-totalCounter = 0
-
-# Open a file in the current directory for saving rick-roll references to.
-with open('d:/RickRollRankingsV1/RickRollCrawler/datalogs/commentstracking.txt', 'a+') as datafile:
+try:
     while True:
         try:
             for comment in redditApi.subreddit('all').stream.comments():
-                totalCounter = totalCounter + 1
-                if totalCounter % 5000 == 0:
-                    print(" - - - - > PARSED " + str(totalCounter) + " COMMENTS < - - - - ")
-                if (isRickRoll(comment.body)):
+                if (isRickRoll(comment)):
                     counter = counter + 1
-                    datafile.write("Rickroll #" + str(counter) + " (" + str(totalCounter) + ") | " + datetime.datetime.fromtimestamp(comment.created_utc).strftime('%Y-%m-%d %H:%M:%S') + " | Comment id: " + comment.id + " by " + comment.author.name + " | Thread: " + comment.subreddit.display_name + " - " + comment.submission.title + "\n")
-                    print("================ RICKROLL #" + str(counter) + " ================")
-                    print("Thread: " + comment.subreddit.display_name + " -> " + comment.submission.title)
-                    print("-----------------------------------------------")
-                    print("Comment: (" + str(comment.score) + ") " + comment.author.name + " says: ")
-                    print(comment.body)
-                    print()
+                    print("Found rick roll")
+                if (isRedirectLink(comment)):
+                    print("Found redirect link candidate")
         except praw.exceptions.APIException:
             print(" error!\nRate limited on comment", comment.id, "by", comment.author)
         except prawcore.exceptions.Forbidden:
             print(" error!\n403 error on comment", comment.id, "by", comment.author)
         except prawcore.exceptions.ServerError:
             print(" error!\nServer error on comment")
+        except UnicodeDecodeError:
+            print(" error!\nCould not encode comment using UTF-8 string encoding")
+finally:
+    producer.flush(5)
+    producer.close()
