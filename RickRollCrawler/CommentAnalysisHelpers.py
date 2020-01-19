@@ -1,4 +1,5 @@
 # Some helper functions to check if a comment contains a rick-roll link, or a known redirect link
+from urlextract import URLExtract
 
 # List of url-snippets that are known rick-roll videos
 rickRollTextSnippets = [
@@ -34,6 +35,10 @@ def isRickRoll(comment):
 def isRedirectLink(comment):
     return any(linktext in comment.body for linktext in redirectCandidateSnippets)
 
-def getRedirectLinks(comment):
-    print("TODO: Find all the links and return them in an array")
-    return []
+def getRedirectLinks(text):
+    extractor = URLExtract()
+    possibleUrls = extractor.find_urls(text)
+    matchesList = list(filter(lambda s: any(snippet in s for snippet in redirectCandidateSnippets), possibleUrls))
+    print("Found possible redirect links in comment: ")
+    print(matchesList)
+    return matchesList
