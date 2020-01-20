@@ -2,7 +2,7 @@ package kafkaconsumer
 
 import (
 	"fmt"
-	//"github.com/segmentio/kafka-go"
+	"github.com/segmentio/kafka-go"
 )
 
 // SpinUpConsumer is a simple function returning a string-channel. The purpose of this function is to 

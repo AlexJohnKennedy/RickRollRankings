@@ -2,7 +2,7 @@ package main
 
 import "fmt"
 import "os"
-import "kafkaconsumer"
+import "RickRollRankings/LinkChecker/kafkaconsumer"
 
 // This is the 'main' executable of this simple micro-service.
 // It will import the custom 'consumer', 'condition checker', and 'producer' packages, and
