@@ -9,7 +9,7 @@ def newRickRollSerialiser(comment):
 
 def redirectLinkSerialiser(comment):
     d = getObj(comment)
-    d['linksToCheck'] = getRedirectLinks(comment)
+    d['linksToCheck'] = getRedirectLinks(comment.body)
     return json.dumps(d)
 
 # Private
@@ -25,9 +25,9 @@ def getObj(comment):
         "commentText": comment.body,
         "upvotes": comment.score,
         "postId": comment.link_id,
-        "postTitle": comment.submission.name,
+        "postTitle": comment.submission.title,
         "subredditId": comment.subreddit_id,
-        "subredditTitle": comment.subreddit.name,
+        "subredditTitle": comment.subreddit.display_name,
         "parentCommentId": parId,
         "isReply": isReply,
         "numReplies": len(comment.replies), # For now, we only track top-level replies

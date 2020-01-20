@@ -29,11 +29,11 @@ redirectCandidateSnippets = [
     "ow.ly/"
 ]
 
-def isRickRoll(comment):
-    return any(linktext in comment.body for linktext in rickRollTextSnippets)
+def isRickRoll(text):
+    return any(linktext in text for linktext in rickRollTextSnippets)
 
-def isRedirectLink(comment):
-    return any(linktext in comment.body for linktext in redirectCandidateSnippets)
+def isRedirectLink(text):
+    return any(linktext in text for linktext in redirectCandidateSnippets)
 
 def getRedirectLinks(text):
     extractor = URLExtract()

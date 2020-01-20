@@ -42,11 +42,18 @@ redditApi = praw.Reddit(client_id = CLIENTID, client_secret = CLIENTSECRET, user
 print("Logged in as:")
 print(redditApi.user.me())
 
+total = 0
+
 try:
     while True:
         try:
             for comment in redditApi.subreddit('all').stream.comments():
-                if (isRickRoll(comment)):
+                total = total + 1
+                if total % 1000 == 0:
+                    print("Parsed " + str(total) + " comments")
+                
+                body = comment.body
+                if (isRickRoll(body)):
                     # Publish a new 'New Rick-roll comment' event!
                     print("Found rick roll")
                     producer.send(
@@ -54,7 +61,7 @@ try:
                         value = newRickRollSerialiser(comment),
                         key = comment.author.id
                     )
-                if (isRedirectLink(comment)):
+                if (isRedirectLink(body)):
                     # Publish a new 'redirect links to check' event!
                     print("Found redirect link candidate")
                     producer.send(
@@ -70,6 +77,8 @@ try:
             print(" error!\nServer error on comment")
         except UnicodeDecodeError:
             print(" error!\nCould not encode comment using UTF-8 string encoding")
+        except Exception:
+            print(" CAUGHT GENERIC ERROR!! THIS IS BAD, BUT JUST DOING IT FOR TESTING")
 finally:
     producer.flush(5)
     producer.close()
