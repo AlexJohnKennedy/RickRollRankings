@@ -16,6 +16,17 @@ import "RickRollRankings/LinkChecker/kafkaconsumer"
 func main() {
 	kafkaConsumeTopic := os.Getenv("KAFKA_CHECK_REDIRECT_TOPIC_NAME");
 	kafkaProduceTopic := os.Getenv("KAFKA_NEW_RICKROLL_TOPIC_NAME");
+	bootstrapServ := os.Getenv("KAFKA_BOOTSTRAP_SERV");
+
 	fmt.Printf("Producing to: %s, Consuming from: %s", kafkaProduceTopic, kafkaConsumeTopic);
-	kafkaconsumer.SpinUpConsumer("test", nil, nil);
+	
+	// Initialise some communication channels, and then launch the consumer in a thread
+	incomingLinks := make(chan string);
+	quitSignal := make(chan interface{});
+	go kafkaconsumer.SpinUpConsumer(kafkaConsumeTopic, bootstrapServ, incomingLinks, quitSignal);
+
+	for message := range incomingLinks {
+		// TODO: Pump this string into the Condition checker logic
+		fmt.Println(message);
+	}
 }
