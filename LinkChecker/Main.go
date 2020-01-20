@@ -3,6 +3,8 @@ package main
 import "fmt"
 import "os"
 import "RickRollRankings/LinkChecker/kafkaconsumer"
+import "os/signal"
+import "sync"
 
 // This is the 'main' executable of this simple micro-service.
 // It will import the custom 'consumer', 'condition checker', and 'producer' packages, and
@@ -20,13 +22,28 @@ func main() {
 
 	fmt.Printf("Producing to: %s, Consuming from: %s", kafkaProduceTopic, kafkaConsumeTopic);
 	
+	// Setup a channel to listen for shutdown signals from the OS
+	signalChannel := make(chan os.Signal);
+	signal.Notify(signalChannel, os.Interrupt);		// Configures this program to relay all interrupt signals to this channel
+
 	// Initialise some communication channels, and then launch the consumer in a thread
 	incomingLinks := make(chan string);
 	quitSignal := make(chan interface{});
-	go kafkaconsumer.SpinUpConsumer(kafkaConsumeTopic, bootstrapServ, incomingLinks, quitSignal);
+	var waitgroup sync.WaitGroup;
+	waitgroup.Add(1);
+	go kafkaconsumer.SpinUpConsumer(kafkaConsumeTopic, bootstrapServ, incomingLinks, quitSignal, &waitgroup);
 
-	for message := range incomingLinks {
-		// TODO: Pump this string into the Condition checker logic
-		fmt.Println(message);
+	for {
+		select {
+		case interrupt := <-signalChannel:
+			fmt.Println("Received interrupt signal! Sending shutdown signal now... ");
+			quitSignal <- interrupt;
+			waitgroup.Wait();
+			fmt.Println("Finished shutting everything down! Cya later :)");
+			return;
+		case message := <-incomingLinks:
+			// TODO: Pump this string into the Condition checker logic
+			fmt.Println(message);
+		}
 	}
 }
