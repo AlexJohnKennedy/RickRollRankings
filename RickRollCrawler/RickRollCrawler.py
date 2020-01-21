@@ -18,8 +18,8 @@ import datetime
 import os
 
 # Reddit API Keys and details, loaded from the environment
-CLIENTID = os.environ.get("CLIENT_ID")
-CLIENTSECRET = os.environ.get("CLIENT_SECRET")
+CLIENTID = os.environ.get("PRAW_CLIENT_ID")
+CLIENTSECRET = os.environ.get("PRAW_CLIENT_SECRET")
 USERAGENT = "RickRollRankings:v0.1 (by u/AlexKfridges)"
 
 # Kafka bootstrap server address and topic-names to enqueue, loaded from the environment
