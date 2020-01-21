@@ -4,6 +4,7 @@ import "fmt"
 import "os"
 import "RickRollRankings/LinkChecker/kafkaconsumer"
 import "os/signal"
+import "context"
 import "sync"
 
 // This is the 'main' executable of this simple micro-service.
@@ -28,16 +29,16 @@ func main() {
 
 	// Initialise some communication channels, and then launch the consumer in a thread
 	incomingLinks := make(chan string);
-	quitSignal := make(chan interface{});
+	quitContext, cancelFunction := context.WithCancel(context.Background());
 	var waitgroup sync.WaitGroup;
 	waitgroup.Add(1);
-	go kafkaconsumer.SpinUpConsumer(kafkaConsumeTopic, bootstrapServ, incomingLinks, quitSignal, &waitgroup);
+	go kafkaconsumer.SpinUpConsumer(quitContext, kafkaConsumeTopic, bootstrapServ, incomingLinks, &waitgroup);
 
 	for {
 		select {
 		case interrupt := <-signalChannel:
-			fmt.Println("Received interrupt signal! Sending shutdown signal now... ");
-			quitSignal <- interrupt;
+			fmt.Printf("Received interrupt signal: %s. Calling cancel function now... \n", interrupt);
+			cancelFunction();
 			waitgroup.Wait();
 			fmt.Println("Finished shutting everything down! Cya later :)");
 			return;
