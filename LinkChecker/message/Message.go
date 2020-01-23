@@ -19,6 +19,8 @@ type Message struct {
 	NumReplies int
 	ReplyIds []string
 	LinksToCheck []string
+
+	KafkaKey []byte `json:"-"`
 }
 // ToJSONWithoutLinks converts a message object back into json-encoded UTF-8 bytes, minus the 'links to check' field
 func (m *Message) ToJSONWithoutLinks() ([]byte, error) {
@@ -57,10 +59,11 @@ func (m *Message) ToJSONWithoutLinks() ([]byte, error) {
 	return json.Marshal(&data);
 }
 // BuildMessage converts an incoming json string into a 'Message' object for use with this code-package
-func BuildMessage(jsonWithLinks []byte) (*Message, error) {
+func BuildMessage(jsonWithLinks []byte, key []byte) (*Message, error) {
 	var m Message;
 	if err := json.Unmarshal(jsonWithLinks, &m); err != nil {
 		return nil, err;
 	}
+	m.KafkaKey = key;
 	return &m, nil;
 }

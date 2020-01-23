@@ -94,7 +94,7 @@ func program(targs []string) {
 			// TODO: Log and discard this information is some useful way?
 			fmt.Printf("NO MATCH: Message by user '%s' was NOT a match :(\n", nonmatch.AuthorName);
 			if e, err := nonmatch.ToJSONWithoutLinks(); err == nil {
-				fmt.Printf("RE-ENCODED MESSAGE: %s\n", len(e));
+				fmt.Printf("RE-ENCODED MESSAGE: %s\n", string(e));
 			} else {
 				fmt.Printf("ERROR! Failed to re-encode the message into json: %s\n", err.Error());
 			}
