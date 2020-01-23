@@ -14,8 +14,8 @@ const maxRedirects = 10;
 
 // Message is a simple struct containing the data of a incoming 'links to check' kafka message.
 type Message struct {
-	originalData string
-	linksToCheck []string
+	OriginalData string
+	LinksToCheck []string
 }
 
 // LaunchMessageChecker is a function which waits for messages to on an input channel, and routes those messages to either a 'match' or 'no match'
@@ -39,7 +39,7 @@ func LaunchMessageChecker(ctx context.Context, targetStrings []string, inputs ch
 			fmt.Println("Condition checker worker received quit signal! Shutting down... ");
 			return;
 		case msg := <-inputs:
-			fmt.Printf("Checking message: %s\n", msg.originalData);
+			fmt.Printf("Checking message: %s\n", msg.OriginalData);
 			go checker.checkMessage(msg, matches, nonmatches);
 		}
 	}
@@ -58,11 +58,12 @@ func buildNewLinkChecker(targetStrings []string, cacheSize int) *linkChecker {
 	// if it is targetting a rick-roll url. If this ever occurs, we will abort the request by returning an error such that the link checker
 	// realises the abort was due to a positive match. Any other error type will result in a negative result.
 	customRedirectHandler := func(req *http.Request, via []*http.Request) error {
+		fmt.Printf("Checking redirect: %s --> %s\n", via[len(via)-1].URL.String(), req.URL.String());
 		if len(via) == maxRedirects {
 			return &tooManyRedirectsError{ "Too many redirects! Max limit reached, probe aborted" };
 		}
 		for _, targ := range targetStrings {
-			if strings.Contains(req.RequestURI, targ) {
+			if strings.Contains(req.URL.String(), targ) {
 				return &foundMatchPseudoError{ req.RequestURI };
 			}
 		}
@@ -75,21 +76,21 @@ func buildNewLinkChecker(targetStrings []string, cacheSize int) *linkChecker {
 		cache: gcache.New(cacheSize).LFU().Build(),
 		httpClient: &http.Client{
 			CheckRedirect: customRedirectHandler,
-			Timeout: 10000000000,	// Ten seconds
+			Timeout: 100000000000,	// Ten seconds
 		},
 	};
 }
 func (lc *linkChecker) checkMessage(msg *Message, matchOutput chan *Message, unmatchedOutput chan *Message) {
 	// Create a buffered channel for each link to check, and then query all of the links in parallel. We'll output a match as soon as
 	// we get a positive result, or output no match if nothing does.
-	workerResults := make(chan bool, len(msg.linksToCheck));
-	for _, link := range msg.linksToCheck {
+	workerResults := make(chan bool, len(msg.LinksToCheck));
+	for _, link := range msg.LinksToCheck {
 		go func(s string) {
 			workerResults <-lc.checkLink(s);
 		}(link);
 	}
 	finished := 0;
-	for finished < len(msg.linksToCheck) {
+	for finished < len(msg.LinksToCheck) {
 		if res := <-workerResults; res {
 			// If we got here, this is a positive result!
 			matchOutput <- msg;
@@ -102,6 +103,8 @@ func (lc *linkChecker) checkMessage(msg *Message, matchOutput chan *Message, unm
 	return;
 }
 func (lc *linkChecker) checkLink(url string) bool {
+	fmt.Printf("Checking link: %s\n", url);
+
 	// If we have checked this url before, then we can return instantly
 	if (lc.cache.Has(url)) {
 		r, _ := lc.cache.Get(url);
@@ -110,13 +113,16 @@ func (lc *linkChecker) checkLink(url string) bool {
 	// We have not checked this url before, so we must probe it with the httpclient
 	resp, err := lc.httpClient.Get(url);
 	if (err != nil) {
+		fmt.Printf("Non-nil error for link %s with message: %s\n", url, err.Error());
 		urlErr := err.(*u.Error).Unwrap();
 		if _, ok := urlErr.(*foundMatchPseudoError); ok {
+			fmt.Printf("Found matching link! %s\n", url);
 			lc.cache.Set(url, true);
 			return true;
 		}
 		return false;
 	}
+	fmt.Printf("No error occured: This means we just hit a non-rick roll endpoint with url: %s\n", url);
 	defer resp.Body.Close();
 	lc.cache.Set(url, false);
 	return false;

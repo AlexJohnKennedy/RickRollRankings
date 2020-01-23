@@ -3,11 +3,71 @@ package main
 import "fmt"
 import "os"
 import "RickRollRankings/LinkChecker/kafkaconsumer"
+import "RickRollRankings/LinkChecker/conditionchecker"
 import "os/signal"
 import "context"
 import "sync"
 
 const messageBufferNum = 1000;
+
+// TESTING
+func main() {
+
+	targs := []string {
+		// Youtube videos
+		"oHg5SJYRHA0",
+		"dQw4w9WgXcQ",
+		"xfr64zoBTAQ",
+		"dPmZqsQNzGA",
+		"r8tXjJL3xcM",
+		"6-HUgzYPm9g",
+
+		// Fake news websites which contains an embedded Rick-roll on the site
+		"latlmes.com/breaking",
+		"rickrolled.com",
+	};
+
+	fmt.Println("Starting");
+
+	signalChannel := make(chan os.Signal);
+	signal.Notify(signalChannel, os.Interrupt);
+
+	var waitgroup sync.WaitGroup;
+	waitgroup.Add(1);
+
+	quitContext, cancelFunction := context.WithCancel(context.Background());
+
+	input := make(chan *conditionchecker.Message, 100);
+	matches := make(chan *conditionchecker.Message, 100);
+	fails := make(chan *conditionchecker.Message, 100);
+
+	input <- &conditionchecker.Message{
+		OriginalData: "Test A: Redirects to Youtube.com, Facebook.com, and memes.com",
+		LinksToCheck: []string{
+			"http://www.youtube.com/",
+			"https://www.reddit.com/r/golang/comments/2gruin/how_should_i_clean_up_these_channels/",
+			"http://memes.com",
+			"https://tinyurl.com/2fcpre6",
+		},
+	};
+
+	go conditionchecker.LaunchMessageChecker(quitContext, targs, input, matches, fails, &waitgroup);
+
+	for {
+		select {
+		case interrupt := <-signalChannel:
+			fmt.Printf("Received interrupt signal: %s. Calling cancel function now... \n", interrupt);
+			cancelFunction();
+			waitgroup.Wait();
+			fmt.Println("Finished shutting everything down! Cya later :)");
+			return;
+		case m := <-matches:
+			fmt.Printf("-------\n=============> FOUND MATCH: %s\n-------\n", m.OriginalData);
+		case m := <-fails:
+			fmt.Printf("*******\n=============> NO MATCH: %s\n*******\n", m.OriginalData);
+		}
+	}
+}
 
 // This is the 'main' executable of this simple micro-service.
 // It will import the custom 'consumer', 'condition checker', and 'producer' packages, and
@@ -18,7 +78,7 @@ const messageBufferNum = 1000;
 //                       to look for 301/302 redirect responses which go to a known rick roll url. Any
 //                       matches get pushed into an output channel.
 // Producer --> Simply listens on a channel for 'confirmed rick rolls' and publishes them to kafka
-func main() {
+func main2() {
 	kafkaConsumeTopic := os.Getenv("KAFKA_CHECK_REDIRECT_TOPIC_NAME");
 	kafkaProduceTopic := os.Getenv("KAFKA_NEW_RICKROLL_TOPIC_NAME");
 	bootstrapServ := os.Getenv("KAFKA_BOOTSTRAP_SERV");
