@@ -5,7 +5,8 @@ import "github.com/bluele/gcache"
 import "net/http"
 import u "net/url"
 import "strings"
-import "errors"
+import "sync"
+import "fmt"
 
 // LinkCacheSize is a constant which specifies the capacity of the link-checking LFU cache.
 const LinkCacheSize = 100;
@@ -21,8 +22,27 @@ type Message struct {
 // output channel, based on where the re-directs go on the links to check in the message. This will launch child threads to handle link examination,
 // and cache results in a LFU cache to avoid re-fetching information from the same link over and over again.
 // It is expected that this function is launched as a go-routine.
-func LaunchMessageChecker(ctx context.Context, targetStrings []string, inputs chan *Message, matches chan *Message, nonmatches chan *Message) {
+func LaunchMessageChecker(ctx context.Context, targetStrings []string, inputs chan *Message, matches chan *Message, nonmatches chan *Message, quitWg *sync.WaitGroup) {
+	defer func() {
+		fmt.Println("Condition checker worker is releasing wait-group...");
+		quitWg.Done();
+	}();
+	
+	fmt.Println("Constructing a link checker, with a new LFU Cache and httpClient...");
 	checker := buildNewLinkChecker(targetStrings, LinkCacheSize);
+
+	fmt.Println("Ready to recieve links-to-check messages!");
+
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("Condition checker worker received quit signal! Shutting down... ");
+			return;
+		case msg := <-inputs:
+			fmt.Printf("Checking message: %s\n", msg.originalData);
+			go checker.checkMessage(msg, matches, nonmatches);
+		}
+	}
 }
 
 type linkChecker struct {
@@ -59,7 +79,29 @@ func buildNewLinkChecker(targetStrings []string, cacheSize int) *linkChecker {
 		},
 	};
 }
-func (lc *linkChecker) check(url string) bool {
+func (lc *linkChecker) checkMessage(msg *Message, matchOutput chan *Message, unmatchedOutput chan *Message) {
+	// Create a buffered channel for each link to check, and then query all of the links in parallel. We'll output a match as soon as
+	// we get a positive result, or output no match if nothing does.
+	workerResults := make(chan bool, len(msg.linksToCheck));
+	for _, link := range msg.linksToCheck {
+		go func(s string) {
+			workerResults <-lc.checkLink(s);
+		}(link);
+	}
+	finished := 0;
+	for finished < len(msg.linksToCheck) {
+		if res := <-workerResults; res {
+			// If we got here, this is a positive result!
+			matchOutput <- msg;
+			return;
+		}
+		finished++;
+		// Do nothing if a result comes back false
+	}
+	unmatchedOutput <- msg;
+	return;
+}
+func (lc *linkChecker) checkLink(url string) bool {
 	// If we have checked this url before, then we can return instantly
 	if (lc.cache.Has(url)) {
 		r, _ := lc.cache.Get(url);
@@ -73,7 +115,6 @@ func (lc *linkChecker) check(url string) bool {
 			lc.cache.Set(url, true);
 			return true;
 		}
-		lc.cache.Set(url, false);
 		return false;
 	}
 	defer resp.Body.Close();

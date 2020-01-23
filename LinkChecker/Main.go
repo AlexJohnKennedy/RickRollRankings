@@ -7,6 +7,8 @@ import "os/signal"
 import "context"
 import "sync"
 
+const messageBufferNum = 1000;
+
 // This is the 'main' executable of this simple micro-service.
 // It will import the custom 'consumer', 'condition checker', and 'producer' packages, and
 // run them in three go routines each, indefinitely!
@@ -28,7 +30,7 @@ func main() {
 	signal.Notify(signalChannel, os.Interrupt);		// Configures this program to relay all interrupt signals to this channel
 
 	// Initialise some communication channels, and then launch the consumer in a thread
-	incomingLinks := make(chan string);
+	incomingLinks := make(chan string, messageBufferNum);
 	quitContext, cancelFunction := context.WithCancel(context.Background());
 	var waitgroup sync.WaitGroup;
 	waitgroup.Add(1);
