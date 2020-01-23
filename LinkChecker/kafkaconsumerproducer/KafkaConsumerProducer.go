@@ -1,4 +1,4 @@
-package kafkaconsumer
+package kafkaconsumerproducer
 
 import (
 	"fmt"
@@ -78,6 +78,7 @@ func SpinUpProducer(ctx context.Context, topicName string, server string, input 
 			producerWg.Wait();
 			return;
 		case message := <-input:
+			fmt.Printf("Found a match!! Message by user '%s' was a match :) What a troll\n", message.AuthorName);
 			if data, err := message.ToJSONWithoutLinks(); err == nil {
 				producerWg.Add(1);
 				go func(message *m.Message) {

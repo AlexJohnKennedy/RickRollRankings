@@ -2,7 +2,7 @@ package main
 
 import "fmt"
 import "os"
-import "RickRollRankings/LinkChecker/kafkaconsumer"
+import k "RickRollRankings/LinkChecker/kafkaconsumerproducer"
 import "RickRollRankings/LinkChecker/conditionchecker"
 import m "RickRollRankings/LinkChecker/message"
 import "os/signal"
@@ -55,7 +55,7 @@ func program(targs []string) {
 	// Initialise some communication channels, and then launch the consumer in a thread
 	waitgroup.Add(1);
 	incomingLinks := make(chan *m.Message, messageBufferNum);
-	go kafkaconsumer.SpinUpConsumer(quitContext, kafkaConsumeTopic, bootstrapServ, incomingLinks, &waitgroup);
+	go k.SpinUpConsumer(quitContext, kafkaConsumeTopic, bootstrapServ, incomingLinks, &waitgroup);
 
 	// Initialise some communication channels for the link checker, and then launch in a thread
 	waitgroup.Add(1);
@@ -63,6 +63,9 @@ func program(targs []string) {
 	matches := make(chan *m.Message, 100);
 	fails := make(chan *m.Message, 100);
 	go conditionchecker.LaunchMessageChecker(quitContext, targs, input, matches, fails, &waitgroup);
+
+	// Launch the kafka producer worker thread as well!
+	go k.SpinUpProducer(quitContext, kafkaProduceTopic, bootstrapServ, matches, &waitgroup);
 
 	for {
 		select {
@@ -82,22 +85,8 @@ func program(targs []string) {
 
 			// Now that we have done our debug prints, let's forward this message to our concurrently-running link checker
 			input <- message;
-		case match := <-matches:
-			// TODO: Pass this to a kafka producer
-			fmt.Printf("Found a match!! Message by user '%s' was a match :) What a troll\n", match.AuthorName);
-			if e, err := match.ToJSONWithoutLinks(); err == nil {
-				fmt.Printf("RE-ENCODED MESSAGE: %s\n", string(e));
-			} else {
-				fmt.Printf("ERROR! Failed to re-encode the message into json: %s\n", err.Error());
-			}
 		case nonmatch := <-fails:
-			// TODO: Log and discard this information is some useful way?
 			fmt.Printf("NO MATCH: Message by user '%s' was NOT a match :(\n", nonmatch.AuthorName);
-			if e, err := nonmatch.ToJSONWithoutLinks(); err == nil {
-				fmt.Printf("RE-ENCODED MESSAGE: %s\n", string(e));
-			} else {
-				fmt.Printf("ERROR! Failed to re-encode the message into json: %s\n", err.Error());
-			}
 		}
 	}
 }
