@@ -5,13 +5,14 @@ import (
 	"sync"
 	"context"
 	"github.com/segmentio/kafka-go"
+	m "RickRollRankings/LinkChecker/message"
 )
 
 // SpinUpConsumer is a simple function returning a string-channel. The purpose of this function is to 
 // pull data from a kafka topic, interpret it as a string, and output it to a channel.
 // Internally, the function call spins up a kafka consumer and listens to it until a quit signal is 
 // recieved (via a 'quit' channel)
-func SpinUpConsumer(ctx context.Context, topicName string, server string, output chan string, quitWg *sync.WaitGroup) {
+func SpinUpConsumer(ctx context.Context, topicName string, server string, output chan *m.Message, quitWg *sync.WaitGroup) {
 	defer func() {
 		fmt.Println("Consumer worker is releasing wait-group...");
 		quitWg.Done();
@@ -36,11 +37,15 @@ func SpinUpConsumer(ctx context.Context, topicName string, server string, output
 
 	// Run the consumer continuously. We will rely on the context cancellation to break us out of this blocking loop.
 	for {
-		message, err := reader.ReadMessage(ctx);
+		kafkaMsg, err := reader.ReadMessage(ctx);
 		if err != nil {
 			fmt.Printf("ERROR ON READ: %s\n", err.Error());
 			return;
 		}
-		output <- string(message.Value[:]);
+		decodedMsg, err := m.BuildMessage(kafkaMsg.Value);
+		if (err != nil) {
+			fmt.Printf("ERROR ON DATA PARSE: %s\n", err.Error());
+		}
+		output <- decodedMsg;
 	}
 }

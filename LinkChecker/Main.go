@@ -4,6 +4,7 @@ import "fmt"
 import "os"
 import "RickRollRankings/LinkChecker/kafkaconsumer"
 import "RickRollRankings/LinkChecker/conditionchecker"
+import m "RickRollRankings/LinkChecker/message"
 import "os/signal"
 import "context"
 import "sync"
@@ -11,8 +12,20 @@ import "sync"
 const messageBufferNum = 1000;
 
 func main() {
-	//shittyTesting();
-	program();
+	targetRickRollStrings := []string {
+		// Youtube videos
+		"oHg5SJYRHA0",
+		"dQw4w9WgXcQ",
+		"xfr64zoBTAQ",
+		"dPmZqsQNzGA",
+		"r8tXjJL3xcM",
+		"6-HUgzYPm9g",
+	
+		// Fake news websites which contains an embedded Rick-roll on the site
+		"latlmes.com/breaking",
+		"rickrolled.com",
+	};
+	program(targetRickRollStrings);
 }
 
 // This is the 'main' executable of this simple micro-service.
@@ -24,7 +37,7 @@ func main() {
 //                       to look for 301/302 redirect responses which go to a known rick roll url. Any
 //                       matches get pushed into an output channel.
 // Producer --> Simply listens on a channel for 'confirmed rick rolls' and publishes them to kafka
-func program() {
+func program(targs []string) {
 	kafkaConsumeTopic := os.Getenv("KAFKA_CHECK_REDIRECT_TOPIC_NAME");
 	kafkaProduceTopic := os.Getenv("KAFKA_NEW_RICKROLL_TOPIC_NAME");
 	bootstrapServ := os.Getenv("KAFKA_BOOTSTRAP_SERV");
@@ -34,13 +47,22 @@ func program() {
 	// Setup a channel to listen for shutdown signals from the OS
 	signalChannel := make(chan os.Signal);
 	signal.Notify(signalChannel, os.Interrupt);		// Configures this program to relay all interrupt signals to this channel
-
-	// Initialise some communication channels, and then launch the consumer in a thread
-	incomingLinks := make(chan string, messageBufferNum);
+	
+	// Setup a cancelation context, and a cleanup waitgroup for all our child threads to use.
 	quitContext, cancelFunction := context.WithCancel(context.Background());
 	var waitgroup sync.WaitGroup;
+
+	// Initialise some communication channels, and then launch the consumer in a thread
 	waitgroup.Add(1);
+	incomingLinks := make(chan *m.Message, messageBufferNum);
 	go kafkaconsumer.SpinUpConsumer(quitContext, kafkaConsumeTopic, bootstrapServ, incomingLinks, &waitgroup);
+
+	// Initialise some communication channels for the link checker, and then launch in a thread
+	waitgroup.Add(1);
+	input := make(chan *m.Message, 100);
+	matches := make(chan *m.Message, 100);
+	fails := make(chan *m.Message, 100);
+	go conditionchecker.LaunchMessageChecker(quitContext, targs, input, matches, fails, &waitgroup);
 
 	for {
 		select {
@@ -51,27 +73,36 @@ func program() {
 			fmt.Println("Finished shutting everything down! Cya later :)");
 			return;
 		case message := <-incomingLinks:
-			// TODO: Pump this string into the Condition checker logic
-			fmt.Println(message);
+			fmt.Printf("Got message by user '%s' and %d links to check!\n---\nComment body: %s\n", message.AuthorName, len(message.LinksToCheck), message.CommentText);
+			fmt.Printf("We will need to search the following links:\n");
+			for _, s := range message.LinksToCheck {
+				fmt.Println(s);
+			}
+			fmt.Printf("===========================================\n");
+
+			// Now that we have done our debug prints, let's forward this message to our concurrently-running link checker
+			input <- message;
+		case match := <-matches:
+			// TODO: Pass this to a kafka producer
+			fmt.Printf("Found a match!! Message by user '%s' was a match :) What a troll\n", match.AuthorName);
+			if e, err := match.ToJSONWithoutLinks(); err == nil {
+				fmt.Printf("RE-ENCODED MESSAGE: %s\n", e);
+			} else {
+				fmt.Printf("ERROR! Failed to re-encode the message into json: %s\n", err.Error());
+			}
+		case nonmatch := <-fails:
+			// TODO: Log and discard this information is some useful way?
+			fmt.Printf("NO MATCH: Message by user '%s' was NOT a match :(\n", nonmatch.AuthorName);
+			if e, err := nonmatch.ToJSONWithoutLinks(); err == nil {
+				fmt.Printf("RE-ENCODED MESSAGE: %s\n", e);
+			} else {
+				fmt.Printf("ERROR! Failed to re-encode the message into json: %s\n", err.Error());
+			}
 		}
 	}
 }
 
-func shittyTesting() {
-	targs := []string {
-		// Youtube videos
-		"oHg5SJYRHA0",
-		"dQw4w9WgXcQ",
-		"xfr64zoBTAQ",
-		"dPmZqsQNzGA",
-		"r8tXjJL3xcM",
-		"6-HUgzYPm9g",
-
-		// Fake news websites which contains an embedded Rick-roll on the site
-		"latlmes.com/breaking",
-		"rickrolled.com",
-	};
-
+func shittyTesting(targs []string) {
 	fmt.Println("Starting");
 
 	signalChannel := make(chan os.Signal);
@@ -82,9 +113,9 @@ func shittyTesting() {
 
 	quitContext, cancelFunction := context.WithCancel(context.Background());
 
-	input := make(chan *conditionchecker.Message, 100);
-	matches := make(chan *conditionchecker.Message, 100);
-	fails := make(chan *conditionchecker.Message, 100);
+	input := make(chan *m.Message, 100);
+	matches := make(chan *m.Message, 100);
+	fails := make(chan *m.Message, 100);
 
 	go conditionchecker.LaunchMessageChecker(quitContext, targs, input, matches, fails, &waitgroup);
 
