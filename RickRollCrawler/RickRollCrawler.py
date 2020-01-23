@@ -12,7 +12,7 @@ from kafka import KafkaProducer
 from kafka.errors import KafkaError
 
 # Misc other imports
-from CommentAnalysisHelpers import isRickRoll, isRedirectLink
+from CommentAnalysisHelpers import isRickRoll, getLinks
 from MessageSerialisationHelpers import newRickRollSerialiser, redirectLinkSerialiser
 import datetime
 import os
@@ -61,14 +61,17 @@ try:
                         value = newRickRollSerialiser(comment),
                         key = comment.author.id
                     )
-                if (isRedirectLink(body)):
-                    # Publish a new 'redirect links to check' event!
-                    print("Found redirect link candidate")
-                    producer.send(
-                        topic = REDIRECT_TOPIC,
-                        value = redirectLinkSerialiser(comment),
-                        key = comment.author.id
-                    )
+                else:
+                    links = getLinks(body)
+                    if (len(links) > 0):
+                        # Publish a new 'redirect links to check' event!
+                        print("Found redirect link candidate:")
+                        print(links)
+                        producer.send(
+                            topic = REDIRECT_TOPIC,
+                            value = redirectLinkSerialiser(comment, links),
+                            key = comment.author.id
+                        )
         except praw.exceptions.APIException:
             print(" error!\nRate limited on comment", comment.id, "by", comment.author)
         except prawcore.exceptions.Forbidden:

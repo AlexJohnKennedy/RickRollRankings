@@ -32,13 +32,6 @@ redirectCandidateSnippets = [
 def isRickRoll(text):
     return any(linktext in text for linktext in rickRollTextSnippets)
 
-def isRedirectLink(text):
-    return any(linktext in text for linktext in redirectCandidateSnippets)
-
-def getRedirectLinks(text):
+def getLinks(text):
     extractor = URLExtract()
-    possibleUrls = extractor.find_urls(text)
-    matchesList = list(filter(lambda s: any(snippet in s for snippet in redirectCandidateSnippets), possibleUrls))
-    print("Found possible redirect links in comment: ")
-    print(matchesList)
-    return matchesList
+    return extractor.find_urls(text)

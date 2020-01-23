@@ -2,14 +2,13 @@
 # This must match the schema which our consumers expect. We will return a JSON-string which is subsequently serialised into
 # bytes for the sake of kafka
 import json
-from CommentAnalysisHelpers import getRedirectLinks
 
 def newRickRollSerialiser(comment):
     return json.dumps(getObj(comment))
 
-def redirectLinkSerialiser(comment):
+def redirectLinkSerialiser(comment, links):
     d = getObj(comment)
-    d['linksToCheck'] = getRedirectLinks(comment.body)
+    d['linksToCheck'] = links
     return json.dumps(d)
 
 # Private
