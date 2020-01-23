@@ -52,19 +52,15 @@ func program(targs []string) {
 	quitContext, cancelFunction := context.WithCancel(context.Background());
 	var waitgroup sync.WaitGroup;
 
-	// Initialise some communication channels, and then launch the consumer in a thread
-	waitgroup.Add(1);
+	// Initialise some communication channels for our incoming and outgoing messages
 	incomingLinks := make(chan *m.Message, messageBufferNum);
+	matches := make(chan *m.Message, messageBufferNum);
+	fails := make(chan *m.Message, messageBufferNum);
+
+	// Initialise our processing components in their own threads
+	waitgroup.Add(3);
 	go k.SpinUpConsumer(quitContext, kafkaConsumeTopic, bootstrapServ, incomingLinks, &waitgroup);
-
-	// Initialise some communication channels for the link checker, and then launch in a thread
-	waitgroup.Add(1);
-	input := make(chan *m.Message, 100);
-	matches := make(chan *m.Message, 100);
-	fails := make(chan *m.Message, 100);
-	go conditionchecker.LaunchMessageChecker(quitContext, targs, input, matches, fails, &waitgroup);
-
-	// Launch the kafka producer worker thread as well!
+	go conditionchecker.LaunchMessageChecker(quitContext, targs, incomingLinks, matches, fails, &waitgroup);
 	go k.SpinUpProducer(quitContext, kafkaProduceTopic, bootstrapServ, matches, &waitgroup);
 
 	for {
@@ -75,16 +71,6 @@ func program(targs []string) {
 			waitgroup.Wait();
 			fmt.Println("Finished shutting everything down! Cya later :)");
 			return;
-		case message := <-incomingLinks:
-			fmt.Printf("Got message by user '%s' and %d links to check!\n---\nComment body: %s\n", message.AuthorName, len(message.LinksToCheck), message.CommentText);
-			fmt.Printf("We will need to search the following links:\n");
-			for _, s := range message.LinksToCheck {
-				fmt.Println(s);
-			}
-			fmt.Printf("===========================================\n");
-
-			// Now that we have done our debug prints, let's forward this message to our concurrently-running link checker
-			input <- message;
 		case nonmatch := <-fails:
 			fmt.Printf("NO MATCH: Message by user '%s' was NOT a match :(\n", nonmatch.AuthorName);
 		}

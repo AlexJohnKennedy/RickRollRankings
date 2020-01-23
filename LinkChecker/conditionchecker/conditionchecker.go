@@ -26,7 +26,7 @@ func LaunchMessageChecker(ctx context.Context, targetStrings []string, inputs ch
 	fmt.Println("Constructing a link checker, with a new LFU Cache and httpClient...");
 	checker := buildNewLinkChecker(targetStrings, LinkCacheSize);
 
-	fmt.Println("Ready to recieve links-to-check messages!");
+	fmt.Println("Ready to receive links-to-check messages!");
 
 	for {
 		select {
@@ -52,7 +52,7 @@ func buildNewLinkChecker(targetStrings []string, cacheSize int) *linkChecker {
 	// if it is targetting a rick-roll url. If this ever occurs, we will abort the request by returning an error such that the link checker
 	// realises the abort was due to a positive match. Any other error type will result in a negative result.
 	customRedirectHandler := func(req *http.Request, via []*http.Request) error {
-		fmt.Printf("Checking redirect: %s --> %s\n", via[len(via)-1].URL.String(), req.URL.String());
+		//fmt.Printf("Checking redirect: %s --> %s\n", via[len(via)-1].URL.String(), req.URL.String());
 		if len(via) == maxRedirects {
 			return &tooManyRedirectsError{ "Too many redirects! Max limit reached, probe aborted" };
 		}
@@ -97,8 +97,6 @@ func (lc *linkChecker) checkMessage(msg *m.Message, matchOutput chan *m.Message,
 	return;
 }
 func (lc *linkChecker) checkLink(url string) bool {
-	fmt.Printf("Checking link: %s\n", url);
-
 	// If we have checked this url before, then we can return instantly
 	if (lc.cache.Has(url)) {
 		r, _ := lc.cache.Get(url);
@@ -107,7 +105,6 @@ func (lc *linkChecker) checkLink(url string) bool {
 	// We have not checked this url before, so we must probe it with the httpclient
 	resp, err := lc.httpClient.Get(url);
 	if (err != nil) {
-		fmt.Printf("Non-nil error for link %s with message: %s\n", url, err.Error());
 		urlErr := err.(*u.Error).Unwrap();
 		if _, ok := urlErr.(*foundMatchPseudoError); ok {
 			fmt.Printf("Found matching link! %s\n", url);
@@ -116,7 +113,6 @@ func (lc *linkChecker) checkLink(url string) bool {
 		}
 		return false;
 	}
-	fmt.Printf("No error occured: This means we just hit a non-rick roll endpoint with url: %s\n", url);
 	defer resp.Body.Close();
 	lc.cache.Set(url, false);
 	return false;
