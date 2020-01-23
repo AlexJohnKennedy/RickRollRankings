@@ -43,9 +43,10 @@ func SpinUpConsumer(ctx context.Context, topicName string, server string, output
 			return;
 		}
 		decodedMsg, err := m.BuildMessage(kafkaMsg.Value);
-		if (err != nil) {
+		if (err == nil) {
+			output <- decodedMsg;
+		} else {
 			fmt.Printf("ERROR ON DATA PARSE: %s\n", err.Error());
 		}
-		output <- decodedMsg;
 	}
 }

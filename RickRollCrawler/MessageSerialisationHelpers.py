@@ -18,7 +18,7 @@ def getObj(comment):
     parId = comment.parent_id if isReply else ""
 
     obj = {
-        "commentTime": comment.created_utc,
+        "commentTime": int(comment.created_utc),
         "commentId": comment.id,
         "authorId": comment.author.id,
         "authorName": comment.author.name,

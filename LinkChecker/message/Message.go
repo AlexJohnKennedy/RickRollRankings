@@ -4,17 +4,17 @@ import "encoding/json"
 
 // Message is a simple struct containing the data of a incoming 'links to check' kafka message.
 type Message struct {
-	CommentTime int
-	CommentId string
-	AuthorId string
+	CommentTime int64
+	CommentID string
+	AuthorID string
 	AuthorName string
 	CommentText string
 	Upvotes int
-	PostId string
+	PostID string
 	PostTitle string
-	SubredditId string
+	SubredditID string
 	SubredditTitle string
-	ParentCommentId string
+	ParentCommentID string
 	IsReply bool
 	NumReplies int
 	ReplyIds []string
@@ -23,37 +23,38 @@ type Message struct {
 // ToJSONWithoutLinks converts a message object back into json-encoded UTF-8 bytes, minus the 'links to check' field
 func (m *Message) ToJSONWithoutLinks() ([]byte, error) {
 	data := struct {
-		commentTime int
-		commentId string
-		authorId string
-		authorName string
-		commentText string
-		upvotes int
-		postId string
-		postTitle string
-		subredditId string
-		subredditTitle string
-		parentCommentId string
-		isReply bool
-		numReplies int
-		replyIds []string
+		CommentTime int64 `json:"commentTime"`
+		CommentID string `json:"commentId"`
+		AuthorID string `json:"authorId"`
+		AuthorName string `json:"authorName"`
+		CommentText string `json:"commentText"`
+		Upvotes int `json:"upvotes"`
+		PostID string `json:"postId"`
+		PostTitle string `json:"postTitle"`
+		SubredditID string `json:"subredditId"`
+		SubredditTitle string `json:"subredditTitle"`
+		ParentCommentID string `json:"parentCommentId"`
+		IsReply bool `json:"isReply"`
+		NumReplies int `json:"numReplies"`
+		ReplyIds []string `json:"replyIds"`
 	}{
-		commentTime: m.CommentTime,
-		commentId: m.CommentId,
-		authorId: m.AuthorId,
-		authorName: m.AuthorName,
-		commentText: m.CommentText,
-		upvotes: m.Upvotes,
-		postId: m.PostId,
-		postTitle: m.PostTitle,
-		subredditId: m.SubredditId,
-		subredditTitle: m.SubredditTitle,
-		parentCommentId: m.ParentCommentId,
-		isReply: m.IsReply,
-		numReplies: m.NumReplies,
-		replyIds: m.ReplyIds,
+		CommentTime: m.CommentTime,
+		CommentID: m.CommentID,
+		AuthorID: m.AuthorID,
+		AuthorName: m.AuthorName,
+		CommentText: m.CommentText,
+		Upvotes: m.Upvotes,
+		PostID: m.PostID,
+		PostTitle: m.PostTitle,
+		SubredditID: m.SubredditID,
+		SubredditTitle: m.SubredditTitle,
+		ParentCommentID: m.ParentCommentID,
+		IsReply: m.IsReply,
+		NumReplies: m.NumReplies,
+		ReplyIds: m.ReplyIds,
 	};
-	return json.Marshal(data);
+
+	return json.Marshal(&data);
 }
 // BuildMessage converts an incoming json string into a 'Message' object for use with this code-package
 func BuildMessage(jsonWithLinks []byte) (*Message, error) {
