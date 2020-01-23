@@ -7,22 +7,17 @@ import u "net/url"
 import "strings"
 import "sync"
 import "fmt"
+import m "RickRollRankings/LinkChecker/message"
 
 // LinkCacheSize is a constant which specifies the capacity of the link-checking LFU cache.
 const LinkCacheSize = 100;
 const maxRedirects = 10;	
 
-// Message is a simple struct containing the data of a incoming 'links to check' kafka message.
-type Message struct {
-	OriginalData string
-	LinksToCheck []string
-}
-
 // LaunchMessageChecker is a function which waits for messages to on an input channel, and routes those messages to either a 'match' or 'no match'
 // output channel, based on where the re-directs go on the links to check in the message. This will launch child threads to handle link examination,
 // and cache results in a LFU cache to avoid re-fetching information from the same link over and over again.
 // It is expected that this function is launched as a go-routine.
-func LaunchMessageChecker(ctx context.Context, targetStrings []string, inputs chan *Message, matches chan *Message, nonmatches chan *Message, quitWg *sync.WaitGroup) {
+func LaunchMessageChecker(ctx context.Context, targetStrings []string, inputs chan *m.Message, matches chan *m.Message, nonmatches chan *m.Message, quitWg *sync.WaitGroup) {
 	defer func() {
 		fmt.Println("Condition checker worker is releasing wait-group...");
 		quitWg.Done();
@@ -39,7 +34,6 @@ func LaunchMessageChecker(ctx context.Context, targetStrings []string, inputs ch
 			fmt.Println("Condition checker worker received quit signal! Shutting down... ");
 			return;
 		case msg := <-inputs:
-			fmt.Printf("Checking message: %s\n", msg.OriginalData);
 			go checker.checkMessage(msg, matches, nonmatches);
 		}
 	}
@@ -80,7 +74,7 @@ func buildNewLinkChecker(targetStrings []string, cacheSize int) *linkChecker {
 		},
 	};
 }
-func (lc *linkChecker) checkMessage(msg *Message, matchOutput chan *Message, unmatchedOutput chan *Message) {
+func (lc *linkChecker) checkMessage(msg *m.Message, matchOutput chan *m.Message, unmatchedOutput chan *m.Message) {
 	// Create a buffered channel for each link to check, and then query all of the links in parallel. We'll output a match as soon as
 	// we get a positive result, or output no match if nothing does.
 	workerResults := make(chan bool, len(msg.LinksToCheck));

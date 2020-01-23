@@ -97,9 +97,9 @@ func shittyTesting() {
 			fmt.Println("Finished shutting everything down! Cya later :)");
 			return;
 		case m := <-matches:
-			fmt.Printf("-------\n=============> FOUND MATCH: %s\n-------\n", m.OriginalData);
+			fmt.Printf("-------\n=============> FOUND MATCH: %s\n-------\n", m.CommentText);
 		case m := <-fails:
-			fmt.Printf("*******\n=============> NO MATCH: %s\n*******\n", m.OriginalData);
+			fmt.Printf("*******\n=============> NO MATCH: %s\n*******\n", m.CommentText);
 		}
 	}
 }
