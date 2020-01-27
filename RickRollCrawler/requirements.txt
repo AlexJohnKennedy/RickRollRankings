@@ -41,7 +41,7 @@ oauthlib==2.1.0
 olefile==0.46
 paramiko==2.6.0
 pexpect==4.6.0
-Pillow==6.1.0
+Pillow==6.2.0
 praw==6.5.1
 prawcore==1.0.1
 protobuf==3.6.1
@@ -58,7 +58,7 @@ python-apt==1.9.0+ubuntu1
 python-dateutil==2.7.3
 python-debian==0.1.36
 pytz==2019.2
-pyxdg==0.25
+pyxdg==0.26
 PyYAML==5.1.2
 reportlab==3.5.23
 requests==2.21.0
@@ -76,7 +76,7 @@ unattended-upgrades==0.1
 update-checker==0.16
 uritools==3.0.0
 urlextract==0.14.0
-urllib3==1.24.1
+urllib3==1.24.2
 usb-creator==0.3.7
 wadllib==1.3.3
 websocket-client==0.57.0
