@@ -63,9 +63,9 @@ func RunTestConsumerInGroup(ctx context.Context, conf KafkaConfig, quitWg *sync.
 		if err != nil {
 			fmt.Println("MEGA ERROR DURING ConsumerGroup.Consumer(): ", err);
 		}
-
 		if ctx.Err() != nil {
-			fmt.Println("Context cancelled! Shutting down now... ");
+			fmt.Println("Context cancelled! Shutting down now... ", err);
+			return;
 		}
 	}
 }
